@@ -1,0 +1,506 @@
+﻿ggbb<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tripsolver · AI Itinerary Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@300;400;500;700&family=Pacifico&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+<style>
+  :root{
+    --bg-0:#000000; --bg-1:#0b0b0b; --bg-2:#161616; --bg-3:#242424;
+    --accent:#ffffff; --accent-2:#8a8a8a; --accent-3:#cfcfcf;
+    --gold:#e4e4e4; --text:#f5f5f5; --muted:#b3b3b3; --faint:#717171;
+    --card:rgba(255,255,255,.055); --card-solid:#0d0d0d; --card-border:rgba(255,255,255,.11);
+    --serif:'Cormorant Garamond',serif; --sans:'Inter',sans-serif; --hand:'Pacifico',cursive;
+    --glow:255,255,255;
+  }
+  [data-theme="light"]{
+    --bg-0:#ffffff; --bg-1:#f3f3f3; --bg-2:#e7e7e7; --bg-3:#dbdbdb;
+    --accent:#111111; --accent-2:#777777; --accent-3:#999999;
+    --gold:#555555; --text:#111111; --muted:#4a4a4a; --faint:#8f8f8f;
+    --card:rgba(0,0,0,.04); --card-solid:#ffffff; --card-border:rgba(0,0,0,.12);
+    --glow:20,20,20;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--sans);color:var(--text);min-height:100vh;
+    background:radial-gradient(ellipse at 20% -10%,var(--bg-3),transparent 50%),radial-gradient(ellipse at 100% 110%,var(--bg-2),transparent 55%),var(--bg-0);
+    transition:background .5s,color .4s}
+  body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.03;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .orb{position:fixed;border-radius:50%;filter:blur(100px);z-index:0;pointer-events:none;opacity:.38;animation:orbFloat 20s ease-in-out infinite}
+  .orb.o1{width:480px;height:480px;top:-160px;left:-140px;background:rgba(255,255,255,.18)}
+  .orb.o2{width:420px;height:420px;bottom:-140px;right:-100px;background:rgba(255,255,255,.10);animation-delay:-6s}
+  .orb.o3{width:300px;height:300px;top:40%;left:35%;background:rgba(255,255,255,.06);animation-delay:-12s}
+  @keyframes orbFloat{0%,100%{transform:translate(0,0)}33%{transform:translate(60px,-40px)}66%{transform:translate(-40px,30px)}}
+  /* 3d wireframe cube backdrop */
+  .vcube{position:fixed;top:var(--top);left:var(--left);width:var(--sz);height:var(--sz);z-index:0;pointer-events:none;opacity:var(--op,.4);
+    transform-style:preserve-3d;animation:cubeSpin var(--spin,22s) linear infinite;will-change:transform}
+  .vcube .f{position:absolute;inset:0;border:1px solid rgba(255,255,255,.22);background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.005));box-shadow:0 0 24px rgba(255,255,255,.08) inset}
+  .vcube .f:nth-child(1){transform:translateZ(calc(var(--sz)/2))}
+  .vcube .f:nth-child(2){transform:rotateY(180deg) translateZ(calc(var(--sz)/2))}
+  .vcube .f:nth-child(3){transform:rotateY(90deg) translateZ(calc(var(--sz)/2))}
+  .vcube .f:nth-child(4){transform:rotateY(-90deg) translateZ(calc(var(--sz)/2))}
+  .vcube .f:nth-child(5){transform:rotateX(90deg) translateZ(calc(var(--sz)/2))}
+  .vcube .f:nth-child(6){transform:rotateX(-90deg) translateZ(calc(var(--sz)/2))}
+  .vcube.large{--sz:160px;--spin:30s;--op:.32;--top:-40px;--left:110vw}
+  .vcube.mid{--sz:100px;--spin:26s;--op:.4;--top:25vh;--left:-60px}
+  .vcube.small{--sz:64px;--spin:18s;--op:.22;--top:66vh;--left:48vw}
+  @keyframes cubeSpin{0%{transform:rotateX(-22deg) rotateY(0)}100%{transform:rotateX(-22deg) rotateY(360deg)}}
+  [data-theme="light"] .vcube .f{border-color:rgba(0,0,0,.18);box-shadow:inset 0 0 24px rgba(0,0,0,.05)}
+  .wrap{max-width:1100px;margin:0 auto;padding:20px;position:relative;z-index:1}
+  .topbar{position:sticky;top:12px;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px;padding:10px 18px;border-radius:50px;background:var(--card);border:1px solid var(--card-border);backdrop-filter:blur(20px)}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo-mark{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-family:var(--serif);font-weight:700;font-size:1.15rem;box-shadow:0 0 20px rgba(var(--glow),.5)}
+  .logo h1{font-family:var(--hand);font-size:1.2rem;color:var(--gold);font-weight:400}
+  .logo span{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);display:block}
+  .top-actions{display:flex;gap:8px;align-items:center}
+  .icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--card-border);background:var(--card);color:var(--text);cursor:pointer;display:grid;place-items:center;transition:.25s}
+  .icon-btn:hover{transform:translateY(-3px);color:var(--gold);border-color:var(--gold)}
+  .theme-btn{width:auto;padding:0 16px;border-radius:40px;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}
+  .card{background:var(--card);border:1px solid var(--card-border);border-radius:22px;backdrop-filter:blur(16px);box-shadow:0 25px 60px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.05) inset;animation:cardIn .7s cubic-bezier(.22,1,.36,1) both;
+    transform-style:preserve-3d;transition:transform .25s ease-out,box-shadow .25s}
+  .card.tilt{transform:perspective(1400px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0)}
+  .card.tilt:hover{box-shadow:0 40px 90px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.18) inset}
+  .card[data-3d].east{perspective:1400px}
+  @keyframes cardIn{from{opacity:0;transform:translateY(30px) scale(.96)}to{opacity:1;transform:none}}
+  /* 3d stat pop */
+  .stat{transition:transform .35s cubic-bezier(.22,1,.36,1),box-shadow .35s}
+  .stat.flipped{animation:flipIn .8s cubic-bezier(.22,1,.36,1) both}
+  @keyframes flipIn{from{opacity:0;transform:rotateX(-80deg) translateY(20px)}50%{opacity:1}to{opacity:1;transform:none}}
+  .card-head{padding:22px 26px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .card-head h2{font-family:var(--serif);font-size:1.5rem;font-weight:600;flex:1}
+  .card-head h2 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);margin-right:10px}
+  .card-body{padding:26px}
+  .grid{display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  label{font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:block;font-weight:600}
+  .field{margin-bottom:16px}
+  input,select{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--card-border);background:var(--card-solid);color:var(--text);font-size:.9rem;font-family:var(--sans);outline:none;transition:.25s}
+  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--glow),.15)}
+  input::placeholder{color:var(--faint)}
+  .city-row{display:grid;grid-template-columns:1fr 36px;gap:8px;margin-bottom:8px;align-items:center}
+  .rm-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--card-border);background:var(--card);color:var(--accent);cursor:pointer;display:grid;place-items:center;transition:.25s}
+  .rm-btn:hover{background:var(--accent);color:#fff}
+  .add-btn{border:1px dashed var(--card-border);color:var(--accent-3);background:transparent;cursor:pointer;padding:10px;width:100%;border-radius:12px;font-size:.85rem;font-family:var(--sans)}
+  .add-btn:hover{border-color:var(--accent-3)}
+  .solve-btn{width:100%;padding:15px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:.3s;font-family:var(--sans);box-shadow:0 10px 26px rgba(var(--glow),.4);margin-top:6px}
+  .solve-btn:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 16px 34px rgba(var(--glow),.55)}
+  .solve-btn:disabled{opacity:.5;cursor:not-allowed}
+  .status{min-height:24px;margin-top:14px;font-size:.85rem;color:var(--muted);text-align:center}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--card-border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px;margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .result{display:none}
+  .result.show{display:block;animation:fadeIn .5s ease both}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px;margin-bottom:22px}
+  .stat{background:var(--card);border:1px solid var(--card-border);border-radius:16px;text-align:center;padding:18px 10px}
+  .stat .n{font-family:var(--serif);font-size:1.9rem;font-weight:700;color:var(--accent)}
+  .stat .l{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:5px}
+  .route{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .city-pill{display:flex;align-items:center;gap:8px;background:var(--card-solid);border:1px solid var(--card-border);padding:8px 14px;border-radius:30px;font-size:.86rem}
+  .city-pill .idx{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;display:grid;place-items:center;font-size:.7rem;font-weight:700}
+  .city-pill mark{background:none;color:var(--gold);font-weight:700}
+  .city-pill small{color:var(--faint)}
+  .arrow{color:var(--accent-3)}
+  .segment{border:1px solid var(--card-border);border-radius:14px;padding:14px 16px;margin-bottom:10px;background:var(--card);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .segment b{color:var(--gold)}
+  .seg-info{display:flex;gap:18px;flex-wrap:wrap;font-size:.82rem}
+  .seg-info span{display:inline-flex;align-items:center;gap:6px}
+  .weather{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px}
+  .wcard{background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:12px;text-align:center}
+  .wcard .t{font-size:.9rem;font-family:var(--serif);font-weight:700;color:var(--gold)}
+  .wcard small{display:block;font-size:.72rem;color:var(--muted);margin-top:4px}
+  .emoji-table{width:100%;border-collapse:collapse;font-size:.85rem}
+  .emoji-table th{text-align:left;color:var(--faint);font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;padding:8px 10px;border-bottom:1px solid var(--card-border)}
+  .emoji-table td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+  .emoji-table tr:hover td{background:var(--card)}
+  .foot{text-align:center;color:var(--faint);font-size:.8rem;margin:22px 0;font-style:italic}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);z-index:400;background:var(--card-solid);border:1px solid var(--gold);color:var(--text);padding:13px 24px;border-radius:40px;font-size:.86rem;transition:transform .5s cubic-bezier(.22,1,.36,1);gap:9px;display:flex;align-items:center;max-width:92vw}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast i{color:var(--gold)}
+
+  /* advice section */
+  .advice-section{margin-top:26px;padding-top:20px;border-top:1px solid var(--card-border)}
+  .advice-section .lbl{font-family:var(--serif);font-size:1.1rem;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .advice-section .lbl i{filter:drop-shadow(0 0 8px rgba(var(--glow),.6))}
+  .advice-list{display:flex;flex-direction:column;gap:9px}
+  .advice-item{display:flex;gap:11px;align-items:flex-start;padding:12px 15px;background:var(--card);border:1px solid var(--card-border);border-radius:12px;border-left:3px solid var(--accent-2);transition:all .3s;animation:slideIn .5s both}
+  .advice-item:hover{transform:translateX(4px);border-left-color:var(--accent)}
+  .advice-item.tone-warn{border-left-color:#a3a3a3}
+  [data-theme="light"] .advice-item.tone-warn{border-left-color:#555}
+  .advice-item.theat{border-left-color:var(--accent)}
+  .advice-item .aicn{width:26px;height:26px;border-radius:50%;background:var(--card-solid);display:grid;place-items:center;flex-shrink:0;color:var(--accent);font-size:.78rem;border:1px solid var(--card-border)}
+  .advice-item p{font-size:.86rem;color:var(--muted);line-height:1.55}
+  .advice-item p b{color:var(--accent)}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+  /* pro-tips in empty state */
+  .protips{margin-top:18px;text-align:left;display:grid;grid-template-columns:1fr;gap:8px;max-width:300px;margin-inline:auto}
+  .protip{display:flex;gap:9px;align-items:flex-start;font-size:.78rem;color:var(--muted);padding:9px 12px;background:var(--card);border:1px solid var(--card-border);border-radius:10px;border-left:3px solid var(--accent-2)}
+  .protip i{color:var(--accent);margin-top:2px}
+  /* toggle for advice (mint accent is now silver-gray) */
+  .check-row{display:flex;align-items:center;gap:9px;margin:8px 0;font-size:.83rem;color:var(--muted);cursor:pointer}
+  .check-row input{width:16px;height:16px;accent-color:var(--accent)}
+  ::-webkit-scrollbar{width:9px}
+  ::-webkit-scrollbar-track{background:var(--bg-0)}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(var(--accent),var(--accent-2));border-radius:20px}
+  @media print{.orb,.topbar,.toast{display:none!important}.card{box-shadow:none}}
+</style>
+</head><body>
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+  <div class="vcube large" id="cube1"><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div></div>
+  <div class="vcube mid" id="cube2"><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div></div>
+  <div class="vcube small" id="cube3"><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div><div class="f"></div></div>
+
+  <div class="wrap">
+    <header class="topbar">
+      <div class="logo">
+        <div class="logo-mark">T</div>
+        <div><h1>Tripsolver</h1><span>AI Itinerary Optimizer</span></div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn theme-btn" id="themeBtn"><i class="fas fa-moon"></i> Theme</button>
+        <button class="icon-btn" id="printBtn" title="Print / Save"><i class="fas fa-print"></i></button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card tilt">
+        <div class="card-head"><h2><span class="dot"></span>Plan a trip</h2></div>
+        <div class="card-body">
+          <div class="field"><label>Start city</label><input id="startCity" type="text" placeholder="e.g. Delhi" value="Delhi" /></div>
+          <div class="field">
+            <label>Cities to visit</label>
+            <div id="cityList"></div>
+            <button class="add-btn" id="addBtn"><i class="fas fa-plus"></i> Add city</button>
+          </div>
+          <div class="field">
+            <label>Trip length</label>
+            <select id="days">
+              <option value="3">3 days</option>
+              <option value="5">5 days</option>
+              <option value="7" selected>7 days</option>
+              <option value="10">10 days</option>
+              <option value="14">14 days</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Smart advice</label>
+            <label class="check-row" style="text-transform:none;letter-spacing:0;font-size:.83rem;color:var(--muted)">
+              <input type="checkbox" id="optPace" checked /> Pace & leg warnings
+            </label>
+            <label class="check-row" style="text-transform:none;letter-spacing:0;font-size:.83rem;color:var(--muted)">
+              <input type="checkbox" id="optWeather" checked /> Packing based on weather
+            </label>
+            <label class="check-row" style="text-transform:none;letter-spacing:0;font-size:.83rem;color:var(--muted)">
+              <input type="checkbox" id="optTips" checked /> General pro-tips
+            </label>
+          </div>
+          <button class="solve-btn" id="solveBtn"><i class="fas fa-wand-magic-sparkles"></i> Solve route</button>
+          <div class="status" id="status"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2><span class="dot"></span>Optimized itinerary</h2></div>
+        <div class="card-body">
+          <div class="result" id="result"></div>
+          <div id="empty" style="text-align:center;padding:40px 0;color:var(--faint)">
+            <i class="fas fa-map-location-dot" style="font-size:2.4rem;color:var(--accent-2);margin-bottom:14px"></i>
+            <p style="font-family:var(--serif);font-size:1.2rem">Enter cities &amp; press <b>Solve route</b></p>
+            <p style="font-size:.82rem;margin-top:6px">Shortest visiting order + weather each day + smart advice</p>
+            <div class="protips">
+              <div class="protip"><i class="fas fa-circle-info"></i> <span>The solver uses <b style="color:var(--accent)">2-opt</b> optimization &mdash; it keeps flipping route segments until it cannot improve.</span></div>
+              <div class="protip"><i class="fas fa-sun"></i> <span>Sunny and warm? You get <b style="color:var(--accent)">packing advice</b> based on weather codes.</span></div>
+              <div class="protip"><i class="fas fa-gauge-high"></i> <span>Too many stops for your days? It suggests a <b style="color:var(--accent)">slower pace</b> or buffer day.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">Powered by free Open-Meteo weather &amp; geocoding · TSP solver with nearest-neighbour + 2-opt · Designed by Om</p>
+  </div>
+
+  <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg"></span></div>
+<script>
+  const WEEK = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const EMOJI = {0:'\u2600',1:'\uD83C\uDF24',2:'\u26C5',3:'\u2601',45:'\uD83C\uDF2B',51:'\uD83C\uDF26',61:'\uD83C\uDF27',71:'\u2744',80:'\uD83C\uDF27',95:'\u26C8'};
+  function wemoji(c){ return EMOJI[c] || '\uD83C\uDF21'; }
+
+  const cities = [{name:'Jaipur'},{name:'Agra'}];
+  const cityList = document.getElementById('cityList');
+
+  function renderCities(){
+    cityList.innerHTML = '';
+    cities.forEach((c, i) => {
+      const row = document.createElement('div');
+      row.className = 'city-row';
+      const input = document.createElement('input');
+      input.type = 'text'; input.value = c.name; input.placeholder = 'City ' + (i+1);
+      input.addEventListener('input', () => cities[i].name = input.value);
+      const rm = document.createElement('button');
+      rm.className = 'rm-btn'; rm.innerHTML = '<i class="fas fa-xmark"></i>';
+      rm.addEventListener('click', () => { if (cities.length > 1) { cities.splice(i,1); renderCities(); } });
+      row.appendChild(input); row.appendChild(rm);
+      cityList.appendChild(row);
+    });
+  }
+  renderCities();
+
+  document.getElementById('addBtn').addEventListener('click', () => {
+    cities.push({name:''}); renderCities();
+    const ins = cityList.querySelectorAll('input'); ins[ins.length-1].focus();
+  });
+
+  let toastTimer;
+  function toast(msg, icon){
+    document.getElementById('toast').innerHTML = '<i class="fas ' + (icon||'fa-check-circle') + '"></i><span>' + msg + '</span>';
+    document.getElementById('toast').classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => document.getElementById('toast').classList.remove('show'), 2600);
+  }
+
+  /* 3D card tilt on mouse move */
+  const cards = document.querySelectorAll('.card');
+  document.addEventListener('mousemove', e => {
+    const cx = e.clientX / innerWidth - .5, cy = e.clientY / innerHeight - .5;
+    cards.forEach(c => {
+      if (!c.classList.contains('tilt')) return;
+      c.style.setProperty('--rx', (-cy * 6) + 'deg');
+      c.style.setProperty('--ry', (cx * 6) + 'deg');
+    });
+  });
+  document.addEventListener('mouseleave', () => {
+    cards.forEach(c => { c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg'); });
+  });
+
+  /* Cube parallax on scroll + mouse */
+  const cubes = document.querySelectorAll('.vcube');
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    cubes.forEach((c, i) => {
+      const spd = .08 * (i+1);
+      c.style.transform = `translateY(${-y * spd}px) rotateX(-22deg) rotateY(0)`;
+    });
+  });
+  document.addEventListener('mousemove', e => {
+    const cx = (e.clientX / innerWidth - .5) * 2;
+    cubes.forEach((c, i) => {
+      const spd = .6 * (i+1);
+      c.style.transform = `translateX(${cx * spd}px) rotateX(-22deg) rotateY(${cx * spd * 15}deg)`;
+    });
+  });
+
+  /* ===== SMART ADVICE ENGINE ===== */
+  function buildAdvice(plan, wx, days){
+    const { order, distance, cities } = plan;
+    const legs = order.length - 1;
+    const adv = [];
+
+    // 1) Pace warning
+    const stopsPerDay = legs / days;
+    if (stopsPerDay > 1.3) {
+      adv.push({type:'warn',icon:'fa-gauge-high',title:'Fast pace',text:`${legs} legs in ${days} days = ${stopsPerDay.toFixed(1)} stops/day. Consider +1 buffer day or drop a city.`});
+    } else if (stopsPerDay < .5) {
+      adv.push({type:'info',icon:'fa-clock',title:'Relaxed pace',text:`Only ${stopsPerDay.toFixed(1)} stops/day. You have room for day-trips or extra exploration.`});
+    }
+
+    // 2) Longest leg warning
+    let maxLeg = 0, maxLegI = -1;
+    for (let i=0;i<legs;i++){
+      const a=cities[order[i]], b=cities[order[i+1]];
+      const d = distKM(a,b);
+      if (d > maxLeg) { maxLeg = d; maxLegI = i; }
+    }
+    if (maxLeg > 400) {
+      adv.push({type:'warn',icon:'fa-road',title:'Long haul',text:`${cities[order[maxLegI]].name} &rarr; ${cities[order[maxLegI+1]].name} is ${Math.round(maxLeg)} km (${Math.max(1,Math.round(maxLeg/80))} hr). Plan an overnight or early start.`});
+    }
+
+    // 3) Return leg reminder
+    const returnLeg = distKM(cities[order[legs]], cities[order[0]]);
+    if (returnLeg > 250 && legs > 1) {
+      adv.push({type:'info',icon:'fa-rotate-left',title:'Return leg',text:`Final return is ${Math.round(returnLeg)} km. Book transport back in advance.`});
+    }
+
+    // 4) Weather-based packing
+    const showWeather = document.getElementById('optWeather').checked;
+    if (showWeather) {
+      const seen = new Set();
+      for (const c of cities) {
+        const key = c.name + '.' + c.country;
+        if (seen.has(key)) continue; seen.add(key);
+        const w = wx[key] || [];
+        if (!w.length) continue;
+        const maxT = Math.max(...w.slice(0,3).map(d=>d.tmax));
+        const minT = Math.min(...w.slice(0,3).map(d=>d.tmin));
+        const rainDays = w.slice(0,3).filter(d=>d.precip > 2).length;
+        const snowDays = w.slice(0,3).filter(d=>d.code===71 || d.code===73 || d.code===75 || d.code===77).length;
+        if (maxT >= 38) adv.push({type:'warn',icon:'fa-temperature-high',title:`Heat at ${c.name}`,text:`Highs up to ${Math.round(maxT)}&deg;C. Hydrate, light layers, sun hat, sunscreen.`});
+        else if (minT <= 5) adv.push({type:'warn',icon:'fa-snowflake',title:`Cold at ${c.name}`,text:`Lows near ${Math.round(minT)}&deg;C. Warm layers, gloves, insulated shoes.`});
+        if (rainDays >= 2) adv.push({type:'info',icon:'fa-cloud-showers-heavy',title:`Rain at ${c.name}`,text:`${rainDays} of 3 days with rain. Pack compact umbrella / waterproof shell.`});
+        if (snowDays >= 1) adv.push({type:'info',icon:'fa-snowflake',title:`Snow at ${c.name}`,text:`Possible snow. Waterproof boots + traction.`});
+      }
+    }
+
+    // 5) General pro-tips (static)
+    const showTips = document.getElementById('optTips').checked;
+    if (showTips) {
+      adv.push({type:'tip',icon:'fa-lightbulb',title:'Morning starts',text:'Leave early (6-7 AM) on long legs — beat traffic, catch golden hour at the next stop.'});
+      adv.push({type:'tip',icon:'fa-lightbulb',title:'One-bag rule',text:'Limit to one carry-on per person. Move faster, less loss risk, easier transfers.'});
+      adv.push({type:'tip',icon:'fa-lightbulb',title:'Buffer day',text:'If this is a once-in-a-lifetime trip, add a spare day with no fixed plan for serendipity.'});
+    }
+
+    // 6) Single-day ultra-short legs (day-trip opportunity)
+    if (legs >= 3 && days >= 4) {
+      const shortLegs = [];
+      for (let i=0;i<legs;i++){
+        const a=cities[order[i]], b=cities[order[i+1]];
+        if (distKM(a,b) < 100) shortLegs.push(`${a.name}&rarr;${b.name}`);
+      }
+      if (shortLegs.length >= 2) {
+        adv.push({type:'tip',icon:'fa-compass',title:'Day-trip cluster',text:`Short hops detected: ${shortLegs.join(', ')}. Base in one city, day-trip the others.`});
+      }
+    }
+
+    return adv;
+  }
+
+  function renderAdvice(adv){
+    if (!adv.length) return '';
+    let h = '<div class="advice-section"><div class="lbl"><i class="fas fa-brain"></i> Smart advice</div><div class="advice-list">';
+    adv.forEach(a => {
+      const cls = a.type==='warn' ? 'tone-warn' : a.type==='tip' ? 'theat' : '';
+      h += '<div class="advice-item ' + cls + '"><div class="aicn"><i class="fas ' + a.icon + '"></i></div><p><b>' + a.title + '.</b> ' + a.text + '</p></div>';
+    });
+    h += '</div></div>';
+    return h;
+  }
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
+    document.getElementById('themeBtn').innerHTML = light ? '<i class="fas fa-moon"></i> Theme' : '<i class="fas fa-sun"></i> Theme';
+    toast(light ? 'Dark mode' : 'Light mode');
+  });
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+  const status = document.getElementById('status');
+  const result = document.getElementById('result');
+  const empty = document.getElementById('empty');
+  const solveBtn = document.getElementById('solveBtn');
+
+  async function geocode(name){
+    const r = await fetch('/api/geocode?q=' + encodeURIComponent(name));
+    if (!r.ok) throw new Error('Could not find "' + name + '"');
+    return r.json();
+  }
+
+  function distKM(a, b){
+    const R = 6371, toR = Math.PI/180;
+    const dLat = (b.lat-a.lat)*toR, dLon = (b.lon-a.lon)*toR;
+    const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*toR)*Math.cos(b.lat*toR)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.asin(Math.sqrt(s));
+  }
+  async function solve(){
+    const startName = document.getElementById('startCity').value.trim();
+    if (!startName) return toast('Enter a start city','fa-triangle-exclamation');
+    const names = cities.map(c => c.name.trim()).filter(Boolean);
+    if (names.length < 1) return toast('Add at least 1 destination','fa-triangle-exclamation');
+
+    status.innerHTML = '<span class="spinner"></span>Geocoding cities...';
+    solveBtn.disabled = true;
+    try {
+      const start = await geocode(startName);
+      status.innerHTML = '<span class="spinner"></span>Found. Optimizing route...';
+      const pts = [start];
+      for (const n of names) pts.push(await geocode(n));
+
+      const query = '/api/plan?cities=' + encodeURIComponent(JSON.stringify(pts)) + '&days=' + document.getElementById('days').value;
+      const plan = await (await fetch(query)).json();
+      status.innerHTML = '<span class="spinner"></span>Fetching weather...';
+
+      const seen = new Set(); const wx = {};
+      for (const c of plan.cities) {
+        const key = c.name + '.' + c.country;
+        if (!seen.has(key)) { seen.add(key); wx[key] = await fetch('/api/weather?lat=' + c.lat + '&lon=' + c.lon).then(r => r.json()); }
+      }
+      renderResult(plan, wx);
+      empty.style.display = 'none';
+      result.classList.add('show');
+      status.innerHTML = '<i class="fas fa-circle-check" style="color:var(--accent-3)"></i> Solved in ' + (plan.order.length-1) + ' legs -- ' + Math.round(plan.distance) + ' km round trip';
+      toast('Shortest route found!');
+    } catch (e) {
+      status.innerHTML = '<i class="fas fa-triangle-exclamation" style="color:var(--accent)"></i> ' + e.message;
+      toast(e.message,'fa-triangle-exclamation');
+    } finally { solveBtn.disabled = false; }
+  }
+  function renderResult(plan, wx){
+    const { order, distance, cities } = plan;
+    const days = +document.getElementById('days').value;
+    const legs = order.length - 1;
+
+    // build advice
+    const adv = buildAdvice(plan, wx, days);
+
+    let h = '<div class="stats-grid">' +
+      '<div class="stat"><div class="n">' + Math.round(distance) + '</div><div class="l">km total</div></div>' +
+      '<div class="stat"><div class="n">' + legs + '</div><div class="l">legs</div></div>' +
+      '<div class="stat"><div class="n">' + Math.round(distance/legs) + '</div><div class="l">km/leg</div></div>' +
+      '<div class="stat"><div class="n">' + Math.round(distance/days) + '</div><div class="l">km/day</div></div>' +
+    '</div>';
+
+    h += '<div class="route">';
+    order.forEach((ci, idx) => {
+      h += '<span class="city-pill"><span class="idx">' + (idx+1) + '</span><mark>' + cities[ci].name + '</mark><small>' + (cities[ci].country||'') + '</small></span>';
+      if (idx < legs) h += '<span class="arrow"><i class="fas fa-arrow-right-long"></i></span>';
+    });
+    h += '</div>';
+    h += '<div style="margin-top:20px"><label>Legs</label>';
+    for (let i = 0; i < legs; i++){
+      const a = cities[order[i]], b = cities[order[i+1]];
+      const d = distKM(a, b);
+      h += '<div class="segment"><div><b>' + a.name + '</b> &rarr; <b>' + b.name + '</b></div><div class="seg-info"><span><i class="fas fa-road"></i> ' + Math.round(d) + ' km</span><span><i class="fas fa-clock"></i> ~' + Math.max(1,Math.round(d/80)) + ' hr drive</span></div></div>';
+    }
+    h += '</div>';
+
+    h += '<div style="margin-top:20px"><label>Weather next 3 days</label><div class="weather">';
+    const seen = new Set();
+    for (const c of cities){
+      const key = c.name + '.' + c.country;
+      if (seen.has(key)) continue; seen.add(key);
+      const w = wx[key] || [];
+      if (!w.length) continue;
+      h += '<div class="wcard"><div class="t">' + c.name + '</div>' +
+        w.slice(0,3).map(d => '<small>' + d.d.slice(5) + ' ' + wemoji(d.code) + ' ' + Math.round(d.tmax) + '&deg;</small>').join('') +
+        '</div>';
+    }
+    h += '</div></div>';
+    h += '<div style="margin-top:20px"><label>Suggested day plan</label><table class="emoji-table"><tr><th>Day</th><th>Stay</th><th>Weather</th></tr>';
+    const today = new Date().getDay();
+    for (let d = 0; d < days; d++){
+      const ci = order[Math.min(d, legs)];
+      const c = cities[ci];
+      const w = wx[c.name + '.' + c.country] || [];
+      const day = w[Math.min(d, w.length-1)];
+      h += '<tr><td>Day ' + (d+1) + ' &middot; ' + WEEK[(today+d)%7] + '</td><td>' + c.name + '</td><td>' + (day ? wemoji(day.code)+' '+Math.round(day.tmax)+'&deg;' : '&mdash;') + '</td></tr>';
+    }
+    h += '</table></div>';
+
+    // append advice
+    h += renderAdvice(adv);
+
+    result.innerHTML = h;
+
+    // trigger stat flip-in
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.stat').forEach((s,i)=>{ s.style.animationDelay = (i*80)+'ms'; s.classList.add('flipped'); });
+    });
+  }
+
+  solveBtn.addEventListener('click', solve);
+  document.getElementById('startCity').addEventListener('keydown', e => { if (e.key === 'Enter') solve(); });
+  document.getElementById('days').addEventListener('keydown', e => { if (e.key === 'Enter') solve(); });
+</script>
+</body>
+</html>
